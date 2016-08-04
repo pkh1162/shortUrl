@@ -1,0 +1,30 @@
+html
+  head
+    title Url Shortener Application
+    
+  body
+    div(class="container")
+        h1 Url Shortener Application
+        blockquote How it works
+            ul I can pass a URL as a parameter and I will receive a shortened URL in the JSON response.
+            ul When I visit that shortened URL, it will redirect me to my original link.
+        
+        h3 Example usage:
+        code https://backend-projects-pkh1162.c9users.io/new/http://www.google.com
+        br
+        code https://backend-projects-pkh1162.c9users.io/a0
+        
+        h3 Example output
+        code { "original_url":"http://www.google.com", "short_url": "a0" }     
+        
+        h3 Usage:
+        code https://backend-projects-pkh1162.c9users.io/a0
+        h3 Will redirect to:
+        code htttp://www.google.com
+        
+        
+        h3 Short Urls
+        p To get all codes which have been generated, enter:
+        code https://backend-projects-pkh1162.c9users.io/codes
+    
+    
