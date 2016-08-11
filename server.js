@@ -1,14 +1,39 @@
 var express = require("express");
 var request = require("request");
+var mongo = require("mongodb").MongoClient;
+var dbUrl = process.env.MONGO_URI_SHORT_URL;
 
 
-var short = [];
+
 var count = 0;
 var ans = {};
 var url = "";
 
 var app = express();
 app.set("view engine", "pug");
+
+
+var short = [];
+
+mongo.connect(dbUrl, function(err, db){
+    if (err) throw err;
+    
+    else{
+        var collection = db.collection("short_urls");
+        collection.find({}, {_id:0}).toArray(function(err, data){
+            if (err) throw err;
+            else{
+                for (var i in data){
+                    short[i] = data[i];
+                }
+                //console.log(short);
+            }
+            db.close();
+        })
+    }
+})
+
+
 
 
 app.get("/", function(req, res){
@@ -57,7 +82,7 @@ app.get("/new/*", function(req, res, next) {
 app.get("/codes", function(req, res) {
     res.writeHead(200, {"Content-Type" : "text/plain"});
     currentCodes(res);
-    res.end();
+    //res.end();
 })
 
 
@@ -69,12 +94,12 @@ app.get("/*", function(req, res){
     
         if (short[item] != undefined){
             //console.log(req.params[0]);
-            if (req.params[0] == short[item][0]){
-                res.redirect(short[item][1]);
+            if (req.params[0] == short[item]["short"]){
+                res.redirect(short[item]["original"]);
                 //console.log("short worked");
             }
             else {
-                res.send("Sorry, couldn't redirect : \n" + short);
+                res.send("Sorry, " + "'" + req.params[0] + "'" + " is not a code we have in our database. Type '/codes' to see list of available url codes.");
             }     
         }
         else {
@@ -118,14 +143,13 @@ function checkUrlFormat(enteredUrl){
 
 function setUpShorts(passedUrl){
     //short = "A" + Math.floor((Math.random() * 100) + 1).toString();
+    count = short.length;
     
-    short[count] = ["a" + count.toString(), passedUrl];
-    
-    ans = {
-    original : url,
-    short : short[count][0]
-    }
-    count++;
+    //short[count] = ["a" + count.toString(), passedUrl];
+    short[count] = {"original" : passedUrl, "short" : "a" + count.toString()};
+   
+    ans = short[count];
+    //count++;
 }
 
 
@@ -149,27 +173,87 @@ function checkWebsite(urlToCheck, res, callback){
 
 function urlGoodOrBad(webCheck, res, url){
      if(webCheck){
+         
+         mongo.connect(dbUrl, function(err, db){
+             console.log("Connected to db");
+             if (err) {
+                 db.close();
+                 throw err;
+             }
+             else{
+                 console.log("No error");    
+                 var collection = db.collection("short_urls");
+                 setUpShorts(url);
+                 console.log("shorts set up");
+                 console.log("answer is: " + ans);
+                
+                 res.writeHead(200, {"Content-Type" : "application/json"});
+                 collection.insert(ans, function(err){
+                     if (err) throw err;
+                     var tempAns = {"original": ans.original, "short": ans.short};
+                     res.write(JSON.stringify(tempAns));
+                     console.log("response written");
+                     res.end();
+                     db.close();
+                 })
+             }
+             
+            /* 
             //Website exists
             setUpShorts(url);
             res.writeHead(200, {"Content-Type" : "application/json"});     //100% need this line. It is good practice to always set up the headers, but in 
             //this case it is also vital for the service to function properly. Without this line, /new requests which ended in .com would result in 
             //a pop-up asking me to save the page as a binary file.
             res.write(JSON.stringify(ans));
-     }
+            */
+             
+         })
+                }
      else{
             //Website does not exist.
             res.writeHead(200, {"Content-Type" : "text/html"})
             res.write("Sorry, I don't believe that website could be found.");
+            res.end();
      }
-     res.end();
+     //res.end();
 }
 
 
 function currentCodes(res){
     
     res.write("CODES:\n\n")
+    
+    mongo.connect(dbUrl, function(err, db){
+        if (err) throw err;
+        
+        else{
+            var collection = db.collection("short_urls");
+            collection.find({}, {_id : 0}, {limit: 10}).toArray(function(err, data){
+                if (err) throw err;
+                
+                else{
+                    for (var code in data){
+                        
+                        res.write(JSON.stringify(data[code]));
+                        res.write("\n\n")
+                    }
+                }
+                db.close();
+                res.end();
+            })
+        }
+    })
+    
+    
+    
+    
+/*    
+Printing out the codes without using database.
     for (var code in short){
         res.write(short[code][0] + ":   " + short[code][1] + "\n");
     }
     res.end();
+*/
+
+
 }
